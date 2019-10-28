@@ -90,3 +90,56 @@ let rec definitionABR abr=
   |Node (_,fg,fd) ->"("^definitionABR fg^")"^(definitionABR fd)
 
 
+
+
+                  
+(*Question 2.5*)
+                               
+  
+let rec ajout ab l =
+  match l with
+  |[]->[((definitionABR ab),comp ab Empty)]
+  |(str,v)::ls->if(String.equal str (definitionABR ab))then
+                  (str,(comp ab v ))::ls
+                else
+                  (str,v)::(ajout ab ls)
+
+let comp ab v =
+  match ab with
+  |Empty->Empty
+  |Node(a,fg,fd)->match v with
+                  |Empty->Node([a],comp fg v,comp fd v)
+                  |Node(va,g,d)->node(a::va,comp fg g,comp fd d)
+let compresse abr=
+  let rec loop ab acc=
+    match ab with
+    |Empty->acc
+    |Node(a,g,d)->let nva =loop g acc in
+                  let nvd= loop d nva in
+                  ajout ab nvd
+  in
+  loop abr []
+let rec mise_jour l =
+  match l with
+  |(st,Node(a,g,d))::ls->(st,Node(a,Empty,Empty))::(mise_jour ls)
+  |_->[]
+    
+             
+let rec get_fils str li=
+  match li with
+  |[]->Empty
+  |(st,a)::ls->if(String.equal st str)then
+                 a
+               else
+                 get_fils ls
+
+let  compresseABR ab =
+  let valu =mise_jour (compresse ab) in
+  let rec loop arbre= 
+  match arbre with
+  |Empty->Empty
+  |Node(a,g,d)->match get_fils (definitionABR arbre )valu with
+                |Empty->Empty
+                |Node(a,fg,fd)->Node(a,loop g,loopd)
+  in
+  loop ab
