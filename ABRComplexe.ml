@@ -8,16 +8,38 @@ type 'a tree  = Empty | Node  of  ('a* 'a tree * 'a tree)
 (*****************************************)
 (*             Primitive                 *)
 let create n=Node(n,Empty,Empty)
+
+let  rec insertABR ab v =
+   match ab with
+    |Empty->create (v)
+    |Node (x,fg,fd)->if(x>v)then
+                           Node (x,(insertABR fg v ),fd)
+                         else
+                           Node (x,fg,(insertABR fd v ))
+  
            
-let rec insert abr v =
-  match abr with
-  |Empty->create v
-  |Node (x,fg,fd)->if(x>v)then
-                     Node (x,(insert fg v),fd)
-                   else
-                     Node (x,fg,(insert fd v))
-                 
-                 
+           
+let  insert ab v =
+  let rec loop abr pere= 
+    match abr with
+    |Empty->create (pere,v)
+    |Node ((a,x),fg,fd)->if(x>v)then
+                           Node ((a,x),(loop fg  x),fd)
+                         else
+                           Node ((a,x),fg,(loop fd  x))
+  in
+  loop ab 0
+let  insert ab v =
+  let rec loop abr pere= 
+    match abr with
+    |Empty->create (pere,v)
+    |Node ((a,x),fg,fd)->if(x>v)then
+                           Node ((a,x),(loop fg  x),fd)
+                         else
+                           Node ((a,x),fg,(loop fd  x))
+  in
+  loop ab 0
+                                     
 (*exerice 1*) 
 (* fonction qui retourne l'elements a l'indice i *)
 let rec get l i=
@@ -70,14 +92,21 @@ let  gen_permutation n=
   loop (lis,[])
 (*exercice 2*)
 
-let listetoABR l =
+let listetoABRCompresser l =
   let rec loop liste acc =
     match liste with
     |[]->acc
     |x::xs-> loop xs (insert acc x)
   in
   loop l Empty
-
+  
+let listetoABR l =
+  let rec loop liste acc =
+    match liste with
+    |[]->acc
+    |x::xs-> loop xs (insertABR acc x)
+  in
+  loop l Empty
 (* Question 2.4 : application de fonction de definition de l'arbre avec 
    o(A) ="" si A est reduit a une feuille 
    o(A)= (o(G))o(D) si A est un  neud interne avec G et D comme c sous-noeuds (fills gauche fils droite)
@@ -94,6 +123,12 @@ let rec definitionABR abr=
 
                   
 (*Question 2.5*)
+let rec comp ab v =
+  match ab with
+  |Empty->Empty
+  |Node(a,fg,fd)->match v with
+                  |Empty->Node([a],comp fg v,comp fd v)
+                  |Node(va,g,d)->Node(a::va,comp fg g,comp fd d)
                                
   
 let rec ajout ab l =
@@ -103,13 +138,6 @@ let rec ajout ab l =
                   (str,(comp ab v ))::ls
                 else
                   (str,v)::(ajout ab ls)
-
-let comp ab v =
-  match ab with
-  |Empty->Empty
-  |Node(a,fg,fd)->match v with
-                  |Empty->Node([a],comp fg v,comp fd v)
-                  |Node(va,g,d)->node(a::va,comp fg g,comp fd d)
 let compresse abr=
   let rec loop ab acc=
     match ab with
@@ -131,7 +159,7 @@ let rec get_fils str li=
   |(st,a)::ls->if(String.equal st str)then
                  a
                else
-                 get_fils ls
+                 (get_fils str ls)
 
 let  compresseABR ab =
   let valu =mise_jour (compresse ab) in
@@ -140,6 +168,33 @@ let  compresseABR ab =
   |Empty->Empty
   |Node(a,g,d)->match get_fils (definitionABR arbre )valu with
                 |Empty->Empty
-                |Node(a,fg,fd)->Node(a,loop g,loopd)
+                |Node(a,fg,fd)->Node(a,loop g,loop d)
   in
   loop ab
+    
+
+(* rechercher un element *)
+let rec recherche_list valeur liste pere =
+  match liste with
+  |[]->(pere,-1)
+  |(x,y)::sl->if(x==pere )then
+                if(y==valeur)then
+                (pere,0)
+                else
+                  if(y<valeur)then
+                    (y,2)
+                  else
+                    (y,1)
+              else
+                (recherche_list valeur sl pere)
+
+let rec recherche arbre x pere =
+  match arbre with
+  |Empty -> false
+  |Node([],g,d)->false
+  |Node(s,Empty,Empty)->List.fold_left (||) false (List.map (fun (a,b)->a==pere && b==x)  s ) 
+  |Node(s,g,d)-> match recherche_list x s pere with
+                 |(_,0)->true
+                 |(p,1)->((print_int p );recherche g x p)
+                 |(p,2)->((print_int p );recherche d x p)
+                 |(_,-1)-> false
