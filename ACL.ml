@@ -155,11 +155,6 @@ let test=
   let liste =[4;2;3;8;1;9;6;7;5] in
   let arbre= listetoABR liste in
   String.equal "((())())((())())()" (definitionABR arbre)
-
-(*Arbre Binaire Compresser *)
-
-(*===================== Primitive ===============================*)
-    
 (* fonction qui inser v dans l'arbre binaire de recherche compressé ab *)
 let  insert ab v =
   let rec loop abr pere= 
@@ -213,6 +208,7 @@ let rec ajouter_ABR_a_strucuture ab l =
   qui contient des couples (definitionABR,structure)
 *)
 
+
 let pre_compression arbre=
   let rec loop abr acc=
     match abr with
@@ -265,6 +261,7 @@ let listetoABRCompresser l =
              
 let  compresseABR arbre =
   let liste =mise_jour (pre_compression arbre) in
+  let _=Gc.full_major() in
   let rec loop arbre= 
   match arbre with
   |Empty->Empty
@@ -277,119 +274,16 @@ let  compresseABR arbre =
 
   
 (* rechercher un element  dans une liste de clefs valeur (Pere,valeur) *)
-let rec recherche_list valeur liste pere =
-  match liste with
-  |[]->(pere,-1)
-  |(x,y)::sl->if(x==pere )then
-                if(y==valeur)then
-                (pere,0)
-                else
-                  if(y<valeur)then
-                    (y,2)
-                  else
-                    (y,1)
-              else
-                (recherche_list valeur sl pere)
-
-(*
-  recherche
-*)
-let rec recherche arbre x=
-  let rec loop abr x pere=
-  match abr with
-  |Empty -> false
-  |Node([],g,d)->false
-  |Node(s,Empty,Empty)->List.fold_left (||) false (List.map (fun (a,b)->a==pere && b==x)  s ) 
-  |Node(s,g,d)-> match recherche_list x s pere with
-                 |(_,0)->true
-                 |(p,1)->loop g x p
-                 |(p,2)->loop d x p
-                 |(_,-1)-> false
-  in loop arbre x 0
-
-
-
-(* Question 2.7 Arbre-Compressé-map *)
-module MyMap=Map.Make(Int64)
-
-let  insertMap ab v =
-  let rec loop abr pere= 
-    match abr with
-    |Empty->let m=MyMap.empty in
-            let m=MyMap.add (Int64.of_int pere) [v] m in
-            feuille (m)
-    |Node (map,fg,fd)->
-      let x = MyMap.find (Int64.of_int pere) map in
-      match x with
-      |x::[]-> if(x>v)then
-                 Node (map,(loop fg  x),fd)
-               else
-                 Node (map,fg,(loop fd  x))
-      |_->Empty
-  in
-  loop ab  0
-
-let rec assemblerDeuxArbre_map arbrebinaire arbrecompresser pere =
-  match arbrebinaire with
-  |Empty->Empty
-  |Node(map1,fg,fd)->let x = match MyMap.find pere map1 with
-                       |v::ls->v
-                       |_->failwith "ruh atefkedh"
-                     in
-                     match arbrecompresser with 
-                     |Empty->let m=MyMap.empty in
-                             let m=MyMap.add  pere [x] m in
-                               Node(m,assemblerDeuxArbre_map fg arbrecompresser (Int64.of_int x) ,assemblerDeuxArbre_map fd arbrecompresser (Int64.of_int x))
-                     |Node(map,g,d)->let y = try
-                                           MyMap.find  pere map
-                                         with e -> [] in
-                                       Node((MyMap.add  pere (x::y) map),assemblerDeuxArbre_map fg g (Int64.of_int x),assemblerDeuxArbre_map fd d (Int64.of_int x) )
-                                       
-                                                                              
-let rec ajouter_ABR_a_strucuture_map ab l pere =
-  match l with
-  |[]->[((definitionABR ab),assemblerDeuxArbre_map ab Empty pere)]
-  |(str,v)::ls->if(String.equal str (definitionABR ab))then
-                  (str,(assemblerDeuxArbre_map ab v pere ))::ls
-                else
-                  (str,v)::(ajouter_ABR_a_strucuture_map ab ls pere)
-              
-let pre_compression_map arbre=
-  let rec loop abr acc pere=
-    match abr with
-    |Empty->acc
-    |Node(map,fg,fd)->
-      let x=MyMap.find pere map in
-      match x with 
-      |v::[] ->let nvg =loop fg acc (Int64.of_int v) in
-               let nvd= loop fd nvg  (Int64.of_int v) in
-               ajouter_ABR_a_strucuture_map abr nvd pere
-      |_->[]
-  in
-  loop arbre [] (Int64.of_int 0)
-let listetoABRCompresser_map l =
-  let rec loop liste acc =
-    match liste with
+let  recherche_list valeur liste pere =
+  let rec loop l acc=
+    match l with 
     |[]->acc
-    |x::xs-> loop xs (insertMap acc x)
+    |(x,v)::xl->if(pere==x)then
+                  v::(loop xl acc)
+                else
+                  loop xl acc
   in
-  loop l Empty
-            
-  
-  
-let  compresseABR_map arbre =
-  let liste =mise_jour (pre_compression_map arbre) in
-  let rec loop abr= 
-  match abr with
-  |Empty->Empty
-  |Node(a,g,d)->match recuperer_fils (definitionABR abr ) liste with
-                |Empty->Empty
-                |Node(a,fg,fd)->Node(a,loop g,loop d)
-  in
-  loop arbre
-  
-let recherche_list_map valeur liste pere =
-  match liste with
+   match loop liste [] with
   |[]->(pere,-1)
   |x::[]->if(x==valeur )then
             (x,0)
@@ -408,19 +302,227 @@ let recherche_list_map valeur liste pere =
                 (y,2)
               else
                (y,1)
- 
+  |_->(pere,-1)
+(*
+  recherche
+*)
+let rec recherche_comp arbre x=
+  let rec loop abr x pere=
+  match abr with
+  |Empty -> false
+  |Node([],g,d)->false
+  |Node(s,Empty,Empty)->List.fold_left (||) false (List.map (fun (a,b)->a==pere && b==x)  s ) 
+  |Node(s,g,d)-> match recherche_list x s pere with
+                 |(_,0)->true
+                 |(p,1)->loop g x p
+                 |(p,2)->loop d x p
+                 |(_,_)-> false
+  in loop arbre x 0
+
+
+
+module MyMap=Map.Make(String)
+let  insertMap ab v =
+  let rec loop abr etiquette= 
+    match abr with
+    |Empty->let m=MyMap.empty in
+            let m=MyMap.add etiquette v m in
+            feuille (m)
+    |Node (map,fg,fd)->
+      let x = MyMap.find etiquette  map in
+      if(x>v)then
+        Node (map,(loop fg  ((string_of_int x)^etiquette)),fd)
+      else
+        Node (map,fg,(loop fd ( (string_of_int (x+1))^etiquette)) )
+  in
+  loop ab  "0"
+
   
+let rec assemblerDeuxArbre_map arbrebinaire arbrecompresser etiquette =
+  match arbrebinaire with
+  |Empty->Empty
+  |Node(valeur,fg,fd)->
+    let et=etiquette in
+    match arbrecompresser with 
+    |Empty->let m=MyMap.empty in
+            
+            let m=MyMap.add  etiquette  valeur  m in
+            Node(m,assemblerDeuxArbre_map fg arbrecompresser et ,assemblerDeuxArbre_map fd arbrecompresser  etiquette)
+    |Node(map,g,d)-> Node((MyMap.add  et valeur map),assemblerDeuxArbre_map fg g et  ,assemblerDeuxArbre_map fd d etiquette  )
+                      
+                      
+                   
+let rec ajouter_ABR_a_strucuture_map ab l pere =
+  match l with
+  |[]->[((definitionABR ab),assemblerDeuxArbre_map ab Empty pere)]
+  |(str,v)::ls->if(String.equal str (definitionABR ab))then
+                  (str,(assemblerDeuxArbre_map ab v pere ))::ls
+                else
+                  (str,v)::(ajouter_ABR_a_strucuture_map ab ls pere)
+
+let pre_compression_map arbre=
+  let rec loop abr acc pere=
+    match abr with
+    |Empty->acc
+    |Node(x,fg,fd)->
+      let nvg =loop fg acc  ((string_of_int x)^pere) in
+      let nvd= loop fd nvg  ((string_of_int (x+1))^pere)   in
+               ajouter_ABR_a_strucuture_map abr nvd pere
+      |_->[]
+  in
+  loop arbre [] "0"
   
-let rec recherche arbre x=
+let  compresseABR_map arbre =
+  let liste =mise_jour (pre_compression_map arbre) in
+  
+  let _=Gc.compact() in 
+  let rec loop abr= 
+  match abr with
+  |Empty->Empty
+  |Node(a,g,d)->match recuperer_fils (definitionABR abr ) liste with
+                |Empty->Empty
+                |Node(a,fg,fd)->Node(a,loop g,loop d)
+  in
+  loop arbre
+
+let recherche_map arbre x=
   let rec loop abr x pere=
     match abr with
     |Empty -> false
-    |Node(map,g,d)->
-      let l=MyMap.find (Int64.of_int pere) map in
-      match recherche_list_map x l pere with
-                   |(_,0)->true
-                   |(p,1)->loop g x  p
-                   |(p,2)->loop d x  p
-                   |(_,-1)-> false
-  in loop arbre x 0
-       
+    |Node(map,g,d)->try 
+                     let l=MyMap.find  pere map in
+                     if(x==l)then
+                       true
+                     else
+                       if(l<x)then
+                       loop d x ((string_of_int (l+1))^pere)
+                     else
+                       loop g x ((string_of_int l)^pere)
+                     with e -> false 
+   in loop arbre x "0"
+   
+let print key password =
+    print_string (key ^ " " ^ (string_of_int password) ^ "\n")
+let rec parcours arbre =
+  match arbre with
+  |Empty->print_string("")
+  |Node(map,fg,fd)->parcours fg;
+                    MyMap.iter print map;
+                    parcours fd
+                      
+   
+let checkTime_ABR x=
+  let liste =gen_permutation x in
+  let arbre =listetoABR liste in
+  let debut =Sys.time() in
+  let rechercher=rechercher arbre x in
+  let fin =Sys.time() in
+  fin-.debut
+
+let checkTime_comp x=
+  let liste =gen_permutation x in
+  let arbre =compresseABR(listetoABRCompresser liste)in
+  let debut =Sys.time() in
+  let rechercher=recherche_comp arbre x in
+  let fin =Sys.time() in
+  fin-.debut
+
+let checkTime_map x=
+  let liste =gen_permutation x in
+  let arbre =compresseABR_map(listetoABR liste)in
+  let debut =Sys.time() in
+  let rechercher=recherche_map arbre x in
+  let fin =Sys.time() in
+  fin-.debut
+
+        
+let test_recherche_abr str =
+  let out = open_out str in
+  for i = 1 to 1000 do
+    let y = checkTime_ABR i in
+    Printf.fprintf out "%d %f\n" i y
+  done;
+  close_out out
+ 
+let test_recherche_map str =
+  let out = open_out str in
+  for i = 1 to 1000 do
+    let y = checkTime_map i in 
+    Printf.fprintf out "%d %f\n" i y 
+  done;
+  close_out out
+
+let test_recherche_comp str =
+  let out = open_out str in
+  for i = 1 to 1000 do
+    let x = Random.int i in 
+    let y = checkTime_comp x in 
+    Printf.fprintf out "%d %f\n" i y 
+  done;
+  close_out out
+
+
+let test_espace_map str =
+  let out = open_out str in
+  for i = 1 to 1000 do
+    (* Call GC *)
+    Gc.compact ();
+    (* Get initially allocated bytes *)
+    
+    (* Allocate something *)
+    let arbre =listetoABR (gen_permutation i) in
+
+    let stat=Gc.stat()in
+    Gc.compact();
+    let init_allocated=Gc.allocated_bytes() in
+    Gc.compact();
+    let _= compresseABR_map arbre in
+    (* Call GC to clean all garbages *)
+    Gc.compact ();
+    let now_allocated=Gc.allocated_bytes() in
+    Printf.fprintf out "%d %f\n" i (now_allocated -. init_allocated)
+  done;
+  close_out out
+    
+let test_espace_abr str =
+  let out = open_out str in
+  for i = 1 to 1000 do
+    (* Call GC *)
+    Gc.compact ();
+    (* Get initially allocated bytes *)
+    
+    (* Allocate something *)
+
+    let stat=Gc.stat()in
+    Gc.compact();
+    let init_allocated=Gc.allocated_bytes() in
+    Gc.compact();
+    let arbre =listetoABR (gen_permutation i) in
+    (* Call GC to clean all garbages *)
+    Gc.compact ();
+    let now_allocated=Gc.allocated_bytes() in
+    Printf.fprintf out "%d %f\n" i (now_allocated -. init_allocated)
+  done;
+  close_out out
+
+let test_espace_liste str =
+  let out = open_out str in
+  for i = 1 to 1000 do
+    (* Call GC *)
+    Gc.compact ();
+    let arbre =listetoABRCompresser (gen_permutation i) in
+    (* Get initially allocated bytes *)
+    
+    (* Allocate something *)
+
+    let stat=Gc.stat()in
+    Gc.compact();
+    let init_allocated=Gc.allocated_bytes() in
+    Gc.compact();
+    let arbre =compresseABR arbre in
+    (* Call GC to clean all garbages *)
+    Gc.compact ();
+    let now_allocated=Gc.allocated_bytes() in
+    Printf.fprintf out "%d %f\n" i (now_allocated -. init_allocated)
+  done;
+  close_out out
